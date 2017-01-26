@@ -36,9 +36,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
 import org.sakaiproject.api.common.edu.person.SakaiPersonManager;
-import org.sakaiproject.assignment.api.Assignment;
-import org.sakaiproject.assignment.api.AssignmentContent;
-import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.assignment.api.AssignmentSubmission;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
@@ -49,7 +46,6 @@ import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.sakaiproject.contentreview.exception.TransientSubmissionException;
 import org.sakaiproject.contentreview.impl.hbm.BaseReviewServiceImpl;
 import org.sakaiproject.contentreview.model.ContentReviewItem;
-import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.exception.IdUnusedException;
@@ -125,15 +121,11 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 	private final String KEY_FILE_TYPE_PREFIX = "file.type";
 	
-	private static final String NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_DUE = "2";	
-	
 	final static long LOCK_PERIOD = 12000000;
 	private Long maxRetry = 20L;
 	
 	protected ServerConfigurationService serverConfigurationService;
 	protected ContentHostingService contentHostingService;
-	protected AssignmentService assignmentService;
-	protected EntityManager entityManager;
 	protected SakaiPersonManager sakaiPersonManager;
 	protected UrkundAccountConnection urkundConn;
 	protected UrkundContentValidator urkundContentValidator;
@@ -141,17 +133,11 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	public void setUrkundConn(UrkundAccountConnection urkundConn) {
 		this.urkundConn = urkundConn;
 	}
-	public void setEntityManager(EntityManager entityManager) {
-		this.entityManager = entityManager;
-	}
 	public void setContentHostingService(ContentHostingService contentHostingService) {
 		this.contentHostingService = contentHostingService;
 	}
 	public void setServerConfigurationService(ServerConfigurationService serverConfigurationService) {
 		this.serverConfigurationService = serverConfigurationService;
-	}
-	public void setAssignmentService(AssignmentService assignmentService) {
-		this.assignmentService = assignmentService;
 	}
 	public void setUrkundContentValidator(UrkundContentValidator urkundContentValidator) {
 		this.urkundContentValidator = urkundContentValidator;
@@ -655,7 +641,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		search.addRestriction(new Restriction("status", ContentReviewItem.NOT_SUBMITTED_CODE));
 		search.addRestriction(new Restriction("externalId", "", Restriction.NULL));
 		List<ContentReviewItem> notSubmittedItems = dao.findBySearch(ContentReviewItem.class, search);
-		ContentReviewItem nextItem = getItemPastRetryTime( notSubmittedItems, false );
+		ContentReviewItem nextItem = getItemPastRetryTime( notSubmittedItems );
 		if( nextItem != null )
 		{
 			return nextItem;
@@ -666,7 +652,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		search.addRestriction(new Restriction("status", ContentReviewItem.SUBMISSION_ERROR_RETRY_CODE));
 		search.addRestriction(new Restriction("externalId", "", Restriction.NULL));
 		notSubmittedItems = dao.findBySearch(ContentReviewItem.class, search);
-		nextItem = getItemPastRetryTime( notSubmittedItems, false );
+		nextItem = getItemPastRetryTime( notSubmittedItems );
 		if( nextItem != null )
 		{
 			return nextItem;
@@ -677,7 +663,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		search.addRestriction(new Restriction("status", ContentReviewItem.SUBMISSION_ERROR_USER_DETAILS_CODE));
 		search.addRestriction(new Restriction("externalId", "", Restriction.NULL));
 		notSubmittedItems = dao.findBySearch(ContentReviewItem.class, search);
-		nextItem = getItemPastRetryTime( notSubmittedItems, false );
+		nextItem = getItemPastRetryTime( notSubmittedItems );
 		if( nextItem != null )
 		{
 			return nextItem;
@@ -693,36 +679,14 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	 * @param Items the list of ContentReviewItems to iterate over.
 	 * @return the first item in the list that meets the requirements, or null.
 	 */
-	private ContentReviewItem getItemPastRetryTime( List<ContentReviewItem> items ){
-		return getItemPastRetryTime(items, true);
-	}
-	private ContentReviewItem getItemPastRetryTime( List<ContentReviewItem> items, boolean fullCheck)
+
+	private ContentReviewItem getItemPastRetryTime( List<ContentReviewItem> items)
 	{
 		for( ContentReviewItem item : items )
 		{
 			if( hasReachedRetryTime( item ) && obtainLock( "item." + item.getId().toString() ) )
 			{
-				if(!fullCheck) {
-					return item;
-				}
-				try {
-					//check if current item has to be processed after the assignment due date
-					String assignmentId = assignmentService.getEntity(entityManager.newReference(item.getTaskId())).getId();
-					Assignment a = assignmentService.getAssignment(assignmentId);
-					AssignmentContent ac = a.getContent();
-					
-					if(ac.getGenerateOriginalityReport().equals(NEW_ASSIGNMENT_REVIEW_SERVICE_REPORT_DUE)) {
-						Date dueDate = new Date(a.getDueTime().getTime());
-						if(dueDate.before(new Date())) {
-							return item;
-						}
-						log.debug("assignment due time not yet reached for item: " + item.getId());
-					} else {
-						return item;
-					}
-				} catch (IdUnusedException | PermissionException e) {
-					log.error("Error getting assignment for item "+item.getId(), e);
-				}
+				return item;
 			}
 		}
 
