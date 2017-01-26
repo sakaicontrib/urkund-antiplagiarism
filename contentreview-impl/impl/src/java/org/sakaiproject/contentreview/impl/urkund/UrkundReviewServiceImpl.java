@@ -507,9 +507,11 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		String urlBase = "/sakai-contentreview-tool-federated/images/score_";
 		String suffix = ".gif";
 
-		if (score.compareTo(Long.valueOf(5)) <= 0) {
+		if (score.equals(Long.valueOf(0))) {
 			return urlBase + "green" + suffix;
-		} else if (score.compareTo(Long.valueOf(20)) <= 0) {
+		} else if (score.compareTo(Long.valueOf(39)) <= 0) {
+			return urlBase + "yellow" + suffix;
+		} else if (score.compareTo(Long.valueOf(54)) <= 0) {
 			return urlBase + "orange" + suffix;
 		} else {
 			return urlBase + "red" + suffix;
