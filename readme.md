@@ -11,7 +11,7 @@ This project contains the Urkund implementation for ContentReview
 
 - Clone this project : https://github.com/sakaicontrib/urkund-antiplagiarism
 - Compile our contentreview-impl
-- If your Sakai version is prior to 11.3, patch your Sakai instance with this changes https://github.com/sakaiproject/sakai/pull/**TBC**
+- If your Sakai version is prior to 11.3, patch your Sakai instance with this changes https://github.com/sakaiproject/sakai/pull/3830
 - Enable the urkund integration in the content-review module and compile it (Sakai source).
   - Open this file content-review/contentreview-federated/pack/src/webapp/WEB-INF/components.xml
   - Uncomment the line bean="org.sakaiproject.contentreview.service.ContentReviewServiceUrkund" to enable the Urkund content review implementation
