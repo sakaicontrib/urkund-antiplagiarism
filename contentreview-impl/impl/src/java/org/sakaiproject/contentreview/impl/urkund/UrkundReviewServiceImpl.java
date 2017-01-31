@@ -290,7 +290,9 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 			if (submissionData != null) {
 				try {
-					if(STATE_ACCEPTED.equals(submissionData.getStatus().get("State"))) {
+					if(STATE_SUBMITTED.equals(submissionData.getStatus().get("State"))) {
+						success++;
+					} else if(STATE_ACCEPTED.equals(submissionData.getStatus().get("State"))) {
 						log.debug("Submission successful");
 						currentItem.setStatus(ContentReviewItem.SUBMITTED_AWAITING_REPORT_CODE);
 						currentItem.setRetryCount(Long.valueOf(0));
