@@ -21,8 +21,8 @@
 
 package org.sakaiproject.contentreview.test;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sakaiproject.contentreview.dao.impl.ContentReviewDao;
 
 /**
@@ -44,7 +44,7 @@ import org.sakaiproject.contentreview.dao.impl.ContentReviewDao;
  */
 public class PreloadTestDataImpl {
 
-   private static Log log = LogFactory.getLog(PreloadTestDataImpl.class);
+   private static Logger log = LoggerFactory.getLogger(PreloadTestDataImpl.class);
 
    private ContentReviewDao dao;
    public void setDao(ContentReviewDao dao) {

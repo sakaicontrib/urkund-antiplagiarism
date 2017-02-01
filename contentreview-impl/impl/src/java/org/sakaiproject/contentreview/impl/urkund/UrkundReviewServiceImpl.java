@@ -30,9 +30,9 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.sakaiproject.api.common.edu.person.SakaiPerson;
 import org.sakaiproject.api.common.edu.person.SakaiPersonManager;
@@ -61,7 +61,7 @@ import org.sakaiproject.util.ResourceLoader;
 
 public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	
-	private static final Log log = LogFactory.getLog(UrkundReviewServiceImpl.class);
+	private static final Logger log = LoggerFactory.getLogger(UrkundReviewServiceImpl.class);
 	
 	private static final String STATE_SUBMITTED = "Submitted";
 	private static final String STATE_ACCEPTED = "Accepted";
@@ -75,10 +75,10 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	private static final String URKUND_SITE_PROPERTY = "urkund";
 	
 	// 0 is unique user ID (must include friendly email address characters only)
-    // 1 is unique site ID (must include friendly email address characters only)
-    // 2 is integration context string (must be 2 to 10 characters)
-    private static final String URKUND_SPOOFED_EMAIL_TEMPLATE = "%s_%s.%s@submitters.urkund.com";
-    private String spoofEmailContext;
+	// 1 is unique site ID (must include friendly email address characters only)
+	// 2 is integration context string (must be 2 to 10 characters)
+	private static final String URKUND_SPOOFED_EMAIL_TEMPLATE = "%s_%s.%s@submitters.urkund.com";
+	private String spoofEmailContext;
 	
 	// Define Urkund's acceptable file extensions and MIME types, order of these arrays DOES matter
 	private final String[] DEFAULT_ACCEPTABLE_FILE_EXTENSIONS = new String[] {
@@ -142,9 +142,9 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	public void setUrkundContentValidator(UrkundContentValidator urkundContentValidator) {
 		this.urkundContentValidator = urkundContentValidator;
 	}
-    public void setSakaiPersonManager(SakaiPersonManager sakaiPersonManager) {
-        this.sakaiPersonManager = sakaiPersonManager;
-    }
+	public void setSakaiPersonManager(SakaiPersonManager sakaiPersonManager) {
+		this.sakaiPersonManager = sakaiPersonManager;
+	}
 	
 	public void init() {
 		maxRetry = Long.valueOf(serverConfigurationService.getInt("urkund.maxRetry", 20));
@@ -166,14 +166,14 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		try {
 			List<ContentReviewItem> matchingItems = getItemsByContentId(contentId);
 			if (matchingItems.size() == 0) {
-				log.debug("Content " + contentId + " has not been queued previously");
+				log.debug("Content {} has not been queued previously", contentId);
 			}
 			if (matchingItems.size() > 1)
 				log.debug("More than one matching item - using first item found");
 
 			item = (ContentReviewItem) matchingItems.iterator().next();
 			if (item.getStatus().compareTo(ContentReviewItem.SUBMITTED_REPORT_AVAILABLE_CODE) != 0) {
-				log.debug("Report not available: " + item.getStatus());
+				log.debug("Report not available: {}", item.getStatus());
 			}
 		} catch (Exception e) {
 			log.error("(getReviewScore)" + e);
@@ -189,7 +189,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		search.addRestriction(new Restriction("contentId", contentId));
 		List<ContentReviewItem> matchingItems = dao.findBySearch(ContentReviewItem.class, search);
 		if (matchingItems.size() == 0) {
-			log.debug("Content " + contentId + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", contentId);
 			throw new QueueException("Content " + contentId + " has not been queued previously");
 		}
 
@@ -202,7 +202,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 		ContentReviewItem item = (ContentReviewItem) matchingItems.iterator().next();
 		if (item.getStatus().compareTo(ContentReviewItem.SUBMITTED_REPORT_AVAILABLE_CODE) != 0) {
-			log.debug("Report not available: " + item.getStatus());
+			log.debug("Report not available: {}", item.getStatus());
 			throw new ReportException("Report not available: " + item.getStatus());
 		}
 
@@ -243,8 +243,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 		//first get not uploaded items
 		for (ContentReviewItem currentItem = getNextItemWithoutExternalId(); currentItem != null; currentItem = getNextItemWithoutExternalId()) {
-			log.debug("Attempting to upload content (status:"+currentItem.getStatus()+"): " + currentItem.getContentId() + " for user: "
-					+ currentItem.getUserId() + " and site: " + currentItem.getSiteId());						
+			log.debug("Attempting to upload content (status:{}): {} for user: {} and site: {}", currentItem.getStatus(), currentItem.getContentId(), currentItem.getUserId(), currentItem.getSiteId());
 
 			if(!processItem(currentItem)){
 				errors++;
@@ -266,8 +265,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		//get documents to analyze
 		for (ContentReviewItem currentItem = getNextItemInSubmissionQueue(); currentItem != null; currentItem = getNextItemInSubmissionQueue()) {
 
-			log.debug("Attempting to submit content (status:"+currentItem.getStatus()+"): " + currentItem.getContentId() + " for user: "
-					+ currentItem.getUserId() + " and site: " + currentItem.getSiteId());						
+			log.debug("Attempting to submit content (status:{}): {} for user: {} and site: {}", currentItem.getStatus(), currentItem.getContentId(), currentItem.getUserId(), currentItem.getSiteId());
 
 			if(!processItem(currentItem)){
 				errors++;
@@ -329,7 +327,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 			releaseLock(currentItem);
 		}
 
-		log.info("Submission queue run completed: " + success + " items submitted, " + errors + " errors.");
+		log.info("Submission queue run completed: {} items submitted, {} errors.", success, errors);
 	}
 
 	@SuppressWarnings({ "deprecation" })
@@ -347,7 +345,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 		Iterator<ContentReviewItem> listIterator = awaitingReport.iterator();
 
-		log.debug("There are " + awaitingReport.size() + " submissions awaiting reports");
+		log.debug("There are {} submissions awaiting reports", awaitingReport.size());
 
 		int errors = 0;
 		int success = 0;
@@ -363,7 +361,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 			if (currentItem.getNextRetryTime().after(new Date())) {
 				// we haven't reached the next retry time
-				log.info("checkForReports :: next retry time not yet reached for item: " + currentItem.getId());
+				log.info("checkForReports :: next retry time not yet reached for item: {}", currentItem.getId());
 				dao.update(currentItem);
 				continue;
 			}
@@ -410,7 +408,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 			}
 		}
 
-		log.info("Finished fetching reports from Urkund : "+success+" success items, "+inprogress+" in progress, "+errors+" errors");
+		log.info("Finished fetching reports from Urkund : {} success items, {} in progress, {} errors", success, inprogress, errors);
 	}
 	
 	
@@ -468,7 +466,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 				String key = KEY_FILE_TYPE_PREFIX + fileExtension;
 				if (!resourceLoader.getIsValid(key))
 				{
-					log.warn("While resolving acceptable file types for Urkund, the sakai.property " + PROP_ACCEPTABLE_FILE_TYPES + " is not set, and the message bundle " + key + " could not be resolved. Displaying [missing key ...] to the user");
+					log.warn("While resolving acceptable file types for Urkund, the sakai.property {} is not set, and the message bundle {} could not be resolved. Displaying [missing key ...] to the user", PROP_ACCEPTABLE_FILE_TYPES, key);
 				}
 				String fileType = resourceLoader.getString(key);
 				appendToMap( acceptableFileTypesToExtensions, fileType, fileExtension );
@@ -484,7 +482,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 			return false;
 		}
 
-		log.debug("isSiteAcceptable: " + site.getId() + " / " + site.getTitle());
+		log.debug("isSiteAcceptable: {} / {}", site.getId(), site.getTitle());
 
 		// Delegated to another bean
 		if (siteAdvisor != null) {
@@ -496,7 +494,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 		String prop = (String) properties.get(URKUND_SITE_PROPERTY);
 		if (StringUtils.isNotBlank(prop)) {
-			log.debug("Using site property: " + prop);
+			log.debug("Using site property: {}", prop);
 			return Boolean.parseBoolean(prop);
 		}
 
@@ -567,12 +565,12 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	//-----------------------------------------------------------------------------
 	//TODO : add error codes every time 'processError' is called, so we can set i18 messages
 	private String getLocalizedReviewErrorMessage(String contentId) {
-		log.debug("Returning review error for content: " + contentId);
+		log.debug("Returning review error for content: {}", contentId);
 
 		List<ContentReviewItem> matchingItems = dao.findByExample(new ContentReviewItem(contentId));
 
 		if (matchingItems.size() == 0) {
-			log.debug("Content " + contentId + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", contentId);
 			return null;
 		}
 
@@ -706,7 +704,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 		if (item.getNextRetryTime().after(new Date())) {
 			//we haven't reached the next retry time
-			log.debug("next retry time not yet reached for item: " + item.getId());
+			log.debug("next retry time not yet reached for item: {}", item.getId());
 			dao.update(item);
 			return false;
 		}
@@ -724,18 +722,18 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 				
 				//this never should happen, user can not add to queue invalid files
 				if(!urkundContentValidator.isAcceptableContent(resource)){
-					log.error("Not valid extension: resource with id " + currentItem.getContentId());
+					log.error("Not valid extension: resource with id {}", currentItem.getContentId());
 					processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_NO_RETRY_CODE, "Not valid extension: resource with id " + currentItem.getContentId(), null);
 					return false;
 				}
 
 			} catch (TypeException e4) {
 
-				log.warn("TypeException: resource with id " + currentItem.getContentId());
+				log.warn("TypeException: resource with id {}", currentItem.getContentId());
 				processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_NO_RETRY_CODE, "TypeException: resource with id " + currentItem.getContentId(), null);
 				return false;
 			} catch (IdUnusedException e) {
-				log.warn("IdUnusedException: no resource with id " + currentItem.getContentId());
+				log.warn("IdUnusedException: no resource with id {}", currentItem.getContentId());
 				processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_NO_RETRY_CODE, "IdUnusedException: no resource with id " + currentItem.getContentId(), null);
 				return false;
 			}
@@ -752,22 +750,22 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		}
 		
 		User user;
-        try {
-            user = userDirectoryService.getUser(currentItem.getUserId());
-        } catch (UserNotDefinedException e1) {
-            log.error("Submission attempt unsuccessful - User not found.", e1);
-            processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_RETRY_CODE, "User not found : Contact Service desk for help", null);
-            return false;
-        }
+		try {
+			user = userDirectoryService.getUser(currentItem.getUserId());
+		} catch (UserNotDefinedException e1) {
+			log.error("Submission attempt unsuccessful - User not found.", e1);
+			processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_RETRY_CODE, "User not found : Contact Service desk for help", null);
+			return false;
+		}
 
-        String submitterEmail = getEmail(user, currentItem.getSiteId());
-        log.debug("Using email = " + submitterEmail + ", for user eid = " + user.getEid() + ", id = " + user.getId() + ", site id = "+currentItem.getSiteId());
-        
-        if (submitterEmail == null) {
-            log.error("User: " + user.getEid() + " has no valid email");
-            processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_USER_DETAILS_CODE, "Invalid user email : Contact Service desk for help", null);
-            return false;
-        }
+		String submitterEmail = getEmail(user, currentItem.getSiteId());
+		log.debug("Using email = {}, for user eid = {}, id = {}, site id = {}", submitterEmail, user.getEid(), user.getId(), currentItem.getSiteId());
+
+		if (submitterEmail == null) {
+			log.error("User: {} has no valid email", user.getEid());
+			processError(currentItem, ContentReviewItem.SUBMISSION_ERROR_USER_DETAILS_CODE, "Invalid user email : Contact Service desk for help", null);
+			return false;
+		}
 		
 		String externalId = contentHostingService.getUuid(resource.getId())+"-"+(new Date()).getTime();
 		UrkundSubmissionData submissionData = null;
@@ -798,12 +796,12 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	}
 	
 	public String escapeFileName(String fileName, String contentId) {
-		log.debug("original filename is: " + fileName);
+		log.debug("original filename is: {}", fileName);
 		if (fileName == null) {
 			// use the id
 			fileName = contentId;
 		}
-		log.debug("fileName is :" + fileName);
+		log.debug("fileName is : {}", fileName);
 		try {
 			fileName = URLDecoder.decode(fileName, "UTF-8");
 			// in rare cases it seems filenames can be double encoded
@@ -811,7 +809,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 				fileName = URLDecoder.decode(fileName, "UTF-8");
 			}
 		} catch (IllegalArgumentException | UnsupportedEncodingException eae) {
-			log.warn("Unable to decode fileName: " + fileName, eae);
+			log.warn("Unable to decode fileName: {}", fileName, eae);
 			return contentId;
 		}
 
@@ -820,7 +818,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		// cleanup
 		fileName = StringUtils.replace(fileName, "__", "_");
 
-		log.debug("fileName is :" + fileName);
+		log.debug("fileName is : {}", fileName);
 		return fileName;
 	}
 
@@ -923,55 +921,55 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 	}
 	
 	// returns null if no valid email exists
-    private String getEmail(User user, String siteId) {
-    	
-    	if (spoofEmailContext != null && spoofEmailContext.length() >= 2 && spoofEmailContext.length() <= 10) {
-    		return String.format(URKUND_SPOOFED_EMAIL_TEMPLATE, user.getId(), siteId, spoofEmailContext);
-    	}
+	private String getEmail(User user, String siteId) {
 
-    	String ret = null;
+		if (spoofEmailContext != null && spoofEmailContext.length() >= 2 && spoofEmailContext.length() <= 10) {
+			return String.format(URKUND_SPOOFED_EMAIL_TEMPLATE, user.getId(), siteId, spoofEmailContext);
+		}
 
-    	// Check account email address
-        if (isValidEmail(user.getEmail())) {
-            ret = user.getEmail().trim();
-        }
+		String ret = null;
 
-        // Lookup system profile email address if necessary
-        if (ret == null) {
-            SakaiPerson sp = sakaiPersonManager.getSakaiPerson(user.getId(), sakaiPersonManager.getSystemMutableType());
-            if (sp != null && isValidEmail(sp.getMail())) {
-                ret = sp.getMail().trim();
-            }
-        }
+		// Check account email address
+		if (isValidEmail(user.getEmail())) {
+			ret = user.getEmail().trim();
+		}
 
-        return ret;
-    }
+		// Lookup system profile email address if necessary
+		if (ret == null) {
+			SakaiPerson sp = sakaiPersonManager.getSakaiPerson(user.getId(), sakaiPersonManager.getSystemMutableType());
+			if (sp != null && isValidEmail(sp.getMail())) {
+				ret = sp.getMail().trim();
+			}
+		}
 
-    /**
-     * Is this a valid email the service will recognize
-     *
-     * @param email
-     * @return
-     */
-    private boolean isValidEmail(String email) {
+		return ret;
+	}
 
-        if (email == null || email.equals("")) {
-            return false;
-        }
+	/**
+	* Is this a valid email the service will recognize
+	*
+	* @param email
+	* @return
+	*/
+	private boolean isValidEmail(String email) {
 
-        email = email.trim();
-        //must contain @
-        if (!email.contains("@")) {
-            return false;
-        }
+		if (email == null || email.equals("")) {
+			return false;
+		}
 
-        //an email can't contain spaces
-        if (email.indexOf(" ") > 0) {
-            return false;
-        }
+		email = email.trim();
+		//must contain @
+		if (!email.contains("@")) {
+			return false;
+		}
 
-        //use commons-validator
-        EmailValidator validator = EmailValidator.getInstance();
-        return validator.isValid(email);
-    }
+		//an email can't contain spaces
+		if (email.indexOf(" ") > 0) {
+			return false;
+		}
+
+		//use commons-validator
+		EmailValidator validator = EmailValidator.getInstance();
+		return validator.isValid(email);
+	}
 }

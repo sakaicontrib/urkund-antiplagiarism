@@ -23,8 +23,8 @@ package org.sakaiproject.contentreview.impl.hbm;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sakaiproject.content.api.ContentResource;
 import org.sakaiproject.contentreview.dao.impl.ContentReviewDao;
 import org.sakaiproject.contentreview.exception.QueueException;
@@ -43,8 +43,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 
 	private String defaultAssignmentName = null;
 
-	private static final Log log = LogFactory
-			.getLog(BaseReviewServiceImpl.class);
+	private static final Logger log = LoggerFactory.getLogger(BaseReviewServiceImpl.class);
 
 	protected ContentReviewDao dao;
 	protected ToolManager toolManager;
@@ -81,7 +80,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 	public void queueContent(String userId, String siteId, String taskId, String contentId)
 			throws QueueException {
 	
-		log.debug("Method called queueContent(" + userId + "," + siteId + "," + contentId + ")");
+		log.debug("Method called queueContent({}, {}, {})", userId, siteId, contentId);
 
 		if (userId == null) {
 			log.debug("Using current user");
@@ -98,8 +97,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 			taskId = siteId + " " + defaultAssignmentName;
 		}
 
-		log.debug("Adding content: " + contentId + " from site " + siteId
-					+ " and user: " + userId + " for task: " + taskId + " to submission queue");
+		log.debug("Adding content: {} from site {} and user: {} for task: {} to submission queue", contentId, siteId, userId, taskId);
 
 		/*
 		 * first check that this content has not been submitted before this may
@@ -130,7 +128,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 		search.addRestriction(new Restriction("contentId", contentId));
 		List<ContentReviewItem> existingItems = dao.findBySearch(ContentReviewItem.class, search);
 		if (existingItems.isEmpty()) {
-			log.debug("Content " + contentId + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", contentId);
 			return null;
 		}
 
@@ -146,7 +144,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 		search.addRestriction(new Restriction("id", Long.valueOf(id)));
 		List<ContentReviewItem> existingItems = dao.findBySearch(ContentReviewItem.class, search);
 		if (existingItems.isEmpty()) {
-			log.debug("Content " + id + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", id);
 			return null;
 		}
 
@@ -159,12 +157,12 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 	
 	public Long getReviewStatus(String contentId)
 			throws QueueException {
-		log.debug("Returning review status for content: " + contentId);
+		log.debug("Returning review status for content: {}", contentId);
 
 		List<ContentReviewItem> matchingItems = getItemsByContentId(contentId);
 		
 		if (matchingItems.isEmpty()) {
-			log.debug("Content " + contentId + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", contentId);
 			throw new QueueException("Content " + contentId + " has not been queued previously");
 		}
 
@@ -176,11 +174,11 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 
 	public Date getDateQueued(String contentId)
 			throws QueueException {
-		log.debug("Returning date queued for content: " + contentId);
+		log.debug("Returning date queued for content: {}", contentId);
 
 		List<ContentReviewItem> matchingItems = getItemsByContentId(contentId);
 		if (matchingItems.isEmpty()) {
-			log.debug("Content " + contentId + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", contentId);
 			throw new QueueException("Content " + contentId + " has not been queued previously");
 		}
 
@@ -192,12 +190,12 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 
 	public Date getDateSubmitted(String contentId)
 		throws QueueException, SubmissionException {
-		log.debug("Returning date queued for content: " + contentId);
+		log.debug("Returning date queued for content: {}", contentId);
 
 		List<ContentReviewItem> matchingItems = getItemsByContentId(contentId);
 		
 		if (matchingItems.isEmpty()) {
-			log.debug("Content " + contentId + " has not been queued previously");
+			log.debug("Content {} has not been queued previously", contentId);
 			throw new QueueException("Content " + contentId + " has not been queued previously");
 		}
 
@@ -206,7 +204,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 
 		ContentReviewItem item = (ContentReviewItem) matchingItems.iterator().next();
 		if (item.getDateSubmitted() == null) {
-			log.debug("Content not yet submitted: " + item.getStatus());
+			log.debug("Content not yet submitted: {}", item.getStatus());
 			throw new SubmissionException("Content not yet submitted: " + item.getStatus());
 		}
 
@@ -214,7 +212,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 	}
 	
 	public List<ContentReviewItem> getReportList(String siteId, String taskId) {
-		log.debug("Returning list of reports for site: " + siteId + ", task: " + taskId);
+		log.debug("Returning list of reports for site: {}, task: {}", siteId, taskId);
 		Search search = new Search();
 		//TII-99 siteId can be null
 		if (siteId != null) {
@@ -230,7 +228,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 	}
 	
 	public List<ContentReviewItem> getAllContentReviewItems(String siteId, String taskId) {
-		log.debug("Returning list of reports for site: " + siteId + ", task: " + taskId);
+		log.debug("Returning list of reports for site: {}, task: {}", siteId, taskId);
 		Search search = new Search();
 		//TII-99 siteId can be null
 		if (siteId != null) {
@@ -245,7 +243,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 	}
 	
 	public List<ContentReviewItem> getReportList(String siteId) {
-		log.debug("Returning list of reports for site: " + siteId);
+		log.debug("Returning list of reports for site: {}", siteId);
 		
 		Search search = new Search();
 		search.addRestriction(new Restriction("siteId", siteId));

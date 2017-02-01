@@ -22,8 +22,8 @@ import java.nio.file.Files;
 import java.util.Base64;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -46,7 +46,7 @@ import org.apache.http.util.EntityUtils;
  *
  */
 public class UrkundAPIUtil {
-	private static final Log log = LogFactory.getLog(UrkundAPIUtil.class);
+	private static final Logger log = LoggerFactory.getLogger(UrkundAPIUtil.class);
 	
 	public static String postDocument(String baseUrl, String submitterEmail, String externalId, String filename, byte[] filecontent, String mimeType, String receiverAddress, String urkundUsername, String urkundPassword, int timeout){
 			String ret = null;

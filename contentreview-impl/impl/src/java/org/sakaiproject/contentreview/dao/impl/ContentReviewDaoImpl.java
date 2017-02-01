@@ -24,8 +24,8 @@ package org.sakaiproject.contentreview.dao.impl;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sakaiproject.contentreview.model.ContentReviewLock;
 import org.sakaiproject.genericdao.hibernate.HibernateCompleteGenericDao;
 import org.sakaiproject.contentreview.dao.impl.ContentReviewDao;
@@ -38,14 +38,14 @@ public class ContentReviewDaoImpl
 	extends HibernateCompleteGenericDao 
 		implements ContentReviewDao {
 
-	private static Log log = LogFactory.getLog(ContentReviewDaoImpl.class);
+	private static Logger log = LoggerFactory.getLogger(ContentReviewDaoImpl.class);
 
 	public void init() {
 		log.debug("init");
 		try{
 			super.initDao();
 		} catch (Exception e) {
-			log.error(e);
+			log.error("Error init : ", e);
 		}
 	}
 
@@ -65,7 +65,7 @@ public class ContentReviewDaoImpl
 	    */
 	   @SuppressWarnings("unchecked")
 	   public Boolean obtainLock(String lockId, String executerId, long timePeriod) {
-		   log.debug("getting lock for " + lockId + " for: " + executerId);
+		   log.debug("getting lock for {} for: {}" , lockId, executerId);
 	      if (executerId == null || 
 	            "".equals(executerId)) {
 	         throw new IllegalArgumentException("The executer Id must be set");
@@ -116,7 +116,7 @@ public class ContentReviewDaoImpl
 	      } catch (RuntimeException e) {
 	         obtainedLock = null; // null indicates the failure
 	         cleanupLockAfterFailure(lockId);
-	         log.fatal("Lock obtaining failure for lock ("+lockId+"): " + e.getMessage(), e);
+	         log.error("Lock obtaining failure for lock ({}): ", lockId, e);
 	      }
 
 	      return obtainedLock;
@@ -166,7 +166,7 @@ public class ContentReviewDaoImpl
 	      } catch (RuntimeException e) {
 	         releasedLock = null; // null indicates the failure
 	         cleanupLockAfterFailure(lockId);
-	         log.fatal("Lock releasing failure for lock ("+lockId+"): " + e.getMessage(), e);
+	         log.error("Lock releasing failure for lock ({}): ", lockId, e);
 	      }
 
 	      return releasedLock;
@@ -188,7 +188,7 @@ public class ContentReviewDaoImpl
 	         getHibernateTemplate().deleteAll(locks);
 	         getHibernateTemplate().flush();
 	      } catch (Exception ex) {
-	         log.error("Could not cleanup the lock ("+lockId+") after failure: " + ex.getMessage(), ex);
+	         log.error("Could not cleanup the lock ({}) after failure: ", lockId, ex);
 	      }
 	   }
 	
