@@ -22,18 +22,19 @@ import java.nio.file.Files;
 import java.util.Base64;
 
 import org.apache.commons.lang3.StringUtils;
+import org.sakaiproject.contentreview.impl.urkund.UrkundSubmission;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.entity.EntityBuilder;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -48,7 +49,7 @@ import org.apache.http.util.EntityUtils;
 public class UrkundAPIUtil {
 	private static final Logger log = LoggerFactory.getLogger(UrkundAPIUtil.class);
 	
-	public static String postDocument(String baseUrl, String submitterEmail, String externalId, String filename, byte[] filecontent, String mimeType, String receiverAddress, String urkundUsername, String urkundPassword, int timeout){
+	public static String postDocument(String baseUrl, String receiverAddress, String externalId, UrkundSubmission submission, String urkundUsername, String urkundPassword, int timeout){
 			String ret = null;
 			
 			RequestConfig.Builder requestBuilder = RequestConfig.custom();
@@ -62,22 +63,23 @@ public class UrkundAPIUtil {
 				
 				HttpPost httppost = new HttpPost(baseUrl+"submissions/"+receiverAddress+"/"+externalId);
 				//------------------------------------------------------------
-			    MultipartEntityBuilder meBuilder = MultipartEntityBuilder.create();
-			    meBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-
-			    meBuilder.addBinaryBody("file", filecontent, ContentType.create(mimeType), filename);
+			    EntityBuilder eBuilder = EntityBuilder.create();
+			    eBuilder.setBinary(submission.getContent());
 			    
-			    httppost.setEntity(meBuilder.build());
+			    httppost.setEntity(eBuilder.build());
 			    //------------------------------------------------------------
 				if(StringUtils.isNotBlank(urkundUsername) && StringUtils.isNotBlank(urkundPassword)) {
 					addAuthorization(httppost, urkundUsername, urkundPassword);
 				}
 				//------------------------------------------------------------
 				httppost.addHeader("Accept", "application/json");
-				httppost.addHeader("Content-Type", mimeType);
-				httppost.addHeader("x-urkund-filename", new String(Base64.getEncoder().encode(filename.getBytes("UTF-8"))));
-				httppost.addHeader("x-urkund-submitter", submitterEmail);
-				httppost.addHeader("x-urkund-anonymous", "false");
+				httppost.addHeader("Content-Type", submission.getMimeType());
+				httppost.addHeader("Accept-Language", submission.getLanguage());
+				httppost.addHeader("x-urkund-filename", submission.getFilenameEncoded());
+				httppost.addHeader("x-urkund-submitter", submission.getSubmitterEmail());
+				httppost.addHeader("x-urkund-anonymous", Boolean.toString(submission.isAnon()));
+				httppost.addHeader("x-urkund-subject", submission.getSubject());
+				httppost.addHeader("x-urkund-message", submission.getMessage());
 				//------------------------------------------------------------
 			    
 			    HttpResponse response = httpClient.execute(httppost);
