@@ -1,0 +1,248 @@
+From f007da43bc2a19d44110d3036925d6ba8a8bbb37 Mon Sep 17 00:00:00 2001
+From: frasese <francisco.saez.segura@gmail.com>
+Date: Tue, 12 Dec 2017 16:41:03 +0100
+Subject: [PATCH] SAK-33617 : Content-review-impl Urkund : Include OptOutUrl
+ (#5019)
+
+---
+ assignment/assignment-api/api/pom.xml              |  4 ++
+ .../assignment/api/ContentReviewResult.java        | 11 +++++
+ .../resources/assignment.properties                |  1 +
+ .../resources/assignment_es.properties             |  1 +
+ .../resources/assignment_sv.properties             |  1 +
+ .../assignment/impl/BaseAssignmentService.java     | 28 ++++++++++++
+ ...ef_assignments_instructor_grading_submission.vm |  5 +++
+ .../chef_assignments_student_view_grade.vm         |  4 ++
+ .../model/ContentReviewItemUrkund.java             | 52 ++++++++++++++++++++++
+ 9 files changed, 107 insertions(+)
+ create mode 100644 content-review/content-review-api/model/src/java/org/sakaiproject/contentreview/model/ContentReviewItemUrkund.java
+
+diff --git a/assignment/assignment-api/api/pom.xml b/assignment/assignment-api/api/pom.xml
+index baf7d935a0..670ca31cd0 100644
+--- a/assignment/assignment-api/api/pom.xml
++++ b/assignment/assignment-api/api/pom.xml
+@@ -40,5 +40,9 @@
+             <groupId>org.sakaiproject.scheduler</groupId>
+             <artifactId>scheduler-api</artifactId>
+         </dependency>
++        <dependency>
++            <groupId>org.sakaiproject.contentreview</groupId>
++            <artifactId>contentreview-model-api</artifactId>
++        </dependency>
+     </dependencies>
+ </project>
+diff --git a/assignment/assignment-api/api/src/java/org/sakaiproject/assignment/api/ContentReviewResult.java b/assignment/assignment-api/api/src/java/org/sakaiproject/assignment/api/ContentReviewResult.java
+index c0add8a68c..c8a50144fe 100644
+--- a/assignment/assignment-api/api/src/java/org/sakaiproject/assignment/api/ContentReviewResult.java
++++ b/assignment/assignment-api/api/src/java/org/sakaiproject/assignment/api/ContentReviewResult.java
+@@ -1,6 +1,7 @@
+ package org.sakaiproject.assignment.api;
+ 
+ import org.sakaiproject.content.api.ContentResource;
++import org.sakaiproject.contentreview.model.ContentReviewItem;
+ import org.sakaiproject.entity.api.ResourceProperties;
+ 
+ /**
+@@ -38,6 +39,8 @@ public class ContentReviewResult
+ 	 * An error string, if any, return from the review service
+ 	 */
+ 	private String reviewError;
++	
++	private ContentReviewItem contentReviewItem;
+ 
+ 
+ 	/**
+@@ -144,4 +147,12 @@ public class ContentReviewResult
+ 	{
+ 		this.reviewError = reviewError;
+ 	}
++
++	public ContentReviewItem getContentReviewItem() {
++		return contentReviewItem;
++	}
++
++	public void setContentReviewItem(ContentReviewItem contentReviewItem) {
++		this.contentReviewItem = contentReviewItem;
++	}
+ }
+diff --git a/assignment/assignment-bundles/resources/assignment.properties b/assignment/assignment-bundles/resources/assignment.properties
+index 9fdfcd0787..4ee0bd47e4 100644
+--- a/assignment/assignment-bundles/resources/assignment.properties
++++ b/assignment/assignment-bundles/resources/assignment.properties
+@@ -702,6 +702,7 @@ review.allow = Allow students to view report
+ review.report = Report
+ review.report.expand = Expand reports
+ review.report.collapse = Collapse reports
++review.report.urkund.optoutlink = Exempt from Urkund
+ review.reports = reports
+ review.submit.papers.repository=Submit papers to the following repository:
+ review.submit.papers.repository.none=None
+diff --git a/assignment/assignment-bundles/resources/assignment_es.properties b/assignment/assignment-bundles/resources/assignment_es.properties
+index 3902e62410..a097fbc11b 100644
+--- a/assignment/assignment-bundles/resources/assignment_es.properties
++++ b/assignment/assignment-bundles/resources/assignment_es.properties
+@@ -697,6 +697,7 @@ review.allow=Permitir al alumnado revisar el informe
+ review.report=Informe de revisi\u00f3n
+ review.report.expand=Expandir los informes
+ review.report.collapse=Contraer los informes
++review.report.urkund.optoutlink = Exenci\u00f3n en Urkund
+ review.reports=informes
+ review.submit.papers.repository=Enviar documentos al siguiente repositorio\:
+ review.submit.papers.repository.none=Ninguno
+diff --git a/assignment/assignment-bundles/resources/assignment_sv.properties b/assignment/assignment-bundles/resources/assignment_sv.properties
+index e026f5f933..3c0df4bdca 100644
+--- a/assignment/assignment-bundles/resources/assignment_sv.properties
++++ b/assignment/assignment-bundles/resources/assignment_sv.properties
+@@ -545,6 +545,7 @@ review.allow=Till\u00e5t studenter att se rapporten
+ review.report=Rapport
+ review.report.expand=Expandera rapporter
+ review.report.collapse=Kollapsa rapporter
++review.report.urkund.optoutlink=Exkludera fr\u00e5n Urkund
+ review.reports=rapporter
+ review.submit.papers.repository=Skicka in dokument till f\u00f6ljande arkiv\: 
+ review.submit.papers.repository.none=Inget 
+diff --git a/assignment/assignment-impl/impl/src/java/org/sakaiproject/assignment/impl/BaseAssignmentService.java b/assignment/assignment-impl/impl/src/java/org/sakaiproject/assignment/impl/BaseAssignmentService.java
+index e40d0f6038..496f3ef80c 100644
+--- a/assignment/assignment-impl/impl/src/java/org/sakaiproject/assignment/impl/BaseAssignmentService.java
++++ b/assignment/assignment-impl/impl/src/java/org/sakaiproject/assignment/impl/BaseAssignmentService.java
+@@ -765,6 +765,7 @@ public abstract class BaseAssignmentService implements AssignmentService, Entity
+  		{
+  			contentReviewService = (ContentReviewService) ComponentManager.get(ContentReviewService.class.getName());
+  		}
++ 		
+ 	} // init
+ 
+ 	/**
+@@ -10905,6 +10906,9 @@ public abstract class BaseAssignmentService implements AssignmentService, Entity
+ 				String iconUrl = contentReviewService.getIconUrlforScore(Long.valueOf(reviewScore));
+ 				reviewResult.setReviewIconURL(iconUrl);
+ 				reviewResult.setReviewError(getReviewError(cr));
++				
++				ContentReviewItem cri = findReportByContentId(cr.getId());
++				reviewResult.setContentReviewItem(cri);
+ 
+ 				if ("true".equals(cr.getProperties().getProperty(PROP_INLINE_SUBMISSION)))
+ 				{
+@@ -10918,6 +10922,30 @@ public abstract class BaseAssignmentService implements AssignmentService, Entity
+ 			return reviewResults;
+ 		}
+ 		
++		/**
++		 * Gets a report from contentReviewService given its contentId
++		 * This function should be provided by content-review in Sakai 12+,
++		 * meanwhile in Sakai 11.x we need to get the full report list and iterate over it.
++		 */
++		private ContentReviewItem findReportByContentId(String contentId){
++			String siteId = this.m_context;
++			if(StringUtils.isBlank(contentId)){
++				return null;
++			}
++			try{
++				List<ContentReviewItem> reports = contentReviewService.getReportList(siteId);
++				
++				for(ContentReviewItem item : reports) {
++					if(StringUtils.isNotBlank(item.getContentId()) && contentId.equals(item.getContentId())){
++						return item;
++					}
++				}
++			}catch(Exception e){
++				M_log.error("Error getting reports list for site "+siteId, e);
++			}
++			return null;
++		}
++		
+ 		/**
+ 		 * constructor
+ 		 */
+diff --git a/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_instructor_grading_submission.vm b/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_instructor_grading_submission.vm
+index 2814003ce1..05116b26cb 100644
+--- a/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_instructor_grading_submission.vm
++++ b/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_instructor_grading_submission.vm
+@@ -226,6 +226,11 @@
+ 										#else
+ 											$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))
+ 										#end
++
++										#if (!$submission.getReviewReport().equals("Error") &&
++											$reviewResult.contentReviewItem.optOutUrl)
++												(<a href="$!reviewResult.contentReviewItem.optOutUrl" target="_blank">$tlang.getString("review.report.urkund.optoutlink")</a>)
++										#end
+ 									</div>
+ 								#end
+ 								#if ($reviewResults.size() >= 3)
+diff --git a/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_student_view_grade.vm b/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_student_view_grade.vm
+index b9d8b3f5dc..bc6315be8a 100644
+--- a/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_student_view_grade.vm
++++ b/assignment/assignment-tool/tool/src/webapp/vm/assignment/chef_assignments_student_view_grade.vm
+@@ -197,6 +197,10 @@
+ 										#else
+ 											$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))
+ 										#end
++										#if (!$submission.getReviewReport().equals("Error") &&
++											$reviewResult.contentReviewItem.optOutUrl)
++												(<a href="$!reviewResult.contentReviewItem.optOutUrl" target="_blank">$tlang.getString("review.report.urkund.optoutlink")</a>)
++										#end
+ 									</div>
+ 								#end
+ 								#if ($reviewResults.size() >= 3)
+diff --git a/content-review/content-review-api/model/src/java/org/sakaiproject/contentreview/model/ContentReviewItemUrkund.java b/content-review/content-review-api/model/src/java/org/sakaiproject/contentreview/model/ContentReviewItemUrkund.java
+new file mode 100644
+index 0000000000..7f25c83490
+--- /dev/null
++++ b/content-review/content-review-api/model/src/java/org/sakaiproject/contentreview/model/ContentReviewItemUrkund.java
+@@ -0,0 +1,52 @@
++/**********************************************************************************
++ *
++ * Copyright (c) 2017 Sakai Foundation
++ *
++ * Licensed under the Educational Community License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *       http://www.osedu.org/licenses/ECL-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ *
++ **********************************************************************************/
++
++package org.sakaiproject.contentreview.model;
++
++import java.util.Date;
++
++
++public class ContentReviewItemUrkund extends ContentReviewItem {
++
++	private String reportUrl = "";
++	private String optOutUrl = "";
++
++	public ContentReviewItemUrkund() {
++	}
++	
++	public ContentReviewItemUrkund(String userId, String siteId, String taskId, String contentId, Date dateQueued, Long status) {
++		super(userId, siteId, taskId, contentId, dateQueued, status);
++	}
++
++
++	public String getReportUrl() {
++		return reportUrl;
++	}
++
++	public void setReportUrl(String reportUrl) {
++		this.reportUrl = reportUrl;
++	}
++
++	public String getOptOutUrl() {
++		return optOutUrl;
++	}
++
++	public void setOptOutUrl(String optOutUrl) {
++		this.optOutUrl = optOutUrl;
++	}
++}
+-- 
+2.15.0.windows.1
+

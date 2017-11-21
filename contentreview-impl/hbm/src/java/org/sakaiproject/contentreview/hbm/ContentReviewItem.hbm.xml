@@ -26,5 +26,11 @@
         <property name="retryCount" type="long" not-null="false" />
         <property name="nextRetryTime" type="java.util.Date" not-null="false"/>
         <property name="errorCode" type="integer" not-null="false"/>
+				
+		<joined-subclass name="org.sakaiproject.contentreview.model.ContentReviewItemUrkund" table="CONTENTREVIEW_ITEM_URKUND">  
+			<key column="id"></key>  
+			<property name="reportUrl" type="text" not-null="false" />
+			<property name="optOutUrl" type="text" not-null="false" />
+		</joined-subclass>  
 	</class>
 </hibernate-mapping>
