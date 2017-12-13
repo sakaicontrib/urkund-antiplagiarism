@@ -46,6 +46,7 @@ import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.sakaiproject.contentreview.exception.TransientSubmissionException;
 import org.sakaiproject.contentreview.impl.hbm.BaseReviewServiceImpl;
 import org.sakaiproject.contentreview.model.ContentReviewItem;
+import org.sakaiproject.contentreview.model.ContentReviewItemUrkund;
 import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entitybroker.EntityReference;
 import org.sakaiproject.exception.IdUnusedException;
@@ -187,7 +188,7 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 
 		Search search = new Search();
 		search.addRestriction(new Restriction("contentId", contentId));
-		List<ContentReviewItem> matchingItems = dao.findBySearch(ContentReviewItem.class, search);
+		List<ContentReviewItemUrkund> matchingItems = dao.findBySearch(ContentReviewItemUrkund.class, search);
 		if (matchingItems.size() == 0) {
 			log.debug("Content {} has not been queued previously", contentId);
 			throw new QueueException("Content " + contentId + " has not been queued previously");
@@ -200,24 +201,40 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		// TODO if the database record does not show report available check with
 		// urkund (maybe)
 
-		ContentReviewItem item = (ContentReviewItem) matchingItems.iterator().next();
+		ContentReviewItemUrkund item = (ContentReviewItemUrkund) matchingItems.iterator().next();
 		if (item.getStatus().compareTo(ContentReviewItem.SUBMITTED_REPORT_AVAILABLE_CODE) != 0) {
 			log.debug("Report not available: {}", item.getStatus());
 			throw new ReportException("Report not available: " + item.getStatus());
 		}
-
-		List<UrkundSubmissionData> submissionDataList = urkundConn.getReports(item.getExternalId());
 		
-		String reportURL = null;
-		for(UrkundSubmissionData submissionData : submissionDataList) {
-			if (submissionData != null) {
-				if(submissionData.getExternalId() != null && submissionData.getExternalId().equals(item.getExternalId())){
-					if(STATE_ANALYZED.equals(submissionData.getStatus().get("State"))) {
-						reportURL = (String)submissionData.getReport().get("ReportUrl");
+		String reportURL = item.getReportUrl();
+		if(StringUtils.isBlank(reportURL)){
+
+			List<UrkundSubmissionData> submissionDataList = urkundConn.getReports(item.getExternalId());
+			
+			for(UrkundSubmissionData submissionData : submissionDataList) {
+				if (submissionData != null) {
+					if(submissionData.getExternalId() != null && submissionData.getExternalId().equals(item.getExternalId())){
+						if(STATE_ANALYZED.equals(submissionData.getStatus().get("State"))) {
+							try{
+								reportURL = (String)submissionData.getReport().get("ReportUrl");
+								
+								//store reportURL
+								item.setReportUrl(reportURL);
+								
+								//store OptOutURL
+								Map<String, Object> optOutInfo = (Map)submissionData.getDocument().get("OptOutInfo");
+								item.setOptOutUrl((String)optOutInfo.get("Url"));
+	
+								dao.update(item);
+							}catch(Exception e){
+								throw new ReportException("Error getting data from response");
+							}
+						}
 					}
+				} else {
+					log.error("Error retrieving Urkund report URL");
 				}
-			} else {
-				log.error("Error retrieving Urkund report URL");
 			}
 		}
 		
@@ -341,18 +358,18 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 		search.setConjunction(false); //OR clauses
 		search.addRestriction(new Restriction("status", ContentReviewItem.SUBMITTED_AWAITING_REPORT_CODE));
 		search.addRestriction(new Restriction("status", ContentReviewItem.REPORT_ERROR_RETRY_CODE));
-		List<ContentReviewItem> awaitingReport = dao.findBySearch(ContentReviewItem.class, search);
+		List<ContentReviewItemUrkund> awaitingReport = dao.findBySearch(ContentReviewItemUrkund.class, search);
 
-		Iterator<ContentReviewItem> listIterator = awaitingReport.iterator();
+		Iterator<ContentReviewItemUrkund> listIterator = awaitingReport.iterator();
 
 		log.debug("There are {} submissions awaiting reports", awaitingReport.size());
 
 		int errors = 0;
 		int success = 0;
 		int inprogress = 0;
-		ContentReviewItem currentItem;
+		ContentReviewItemUrkund currentItem;
 		while (listIterator.hasNext()) {
-			currentItem = (ContentReviewItem) listIterator.next();
+			currentItem = (ContentReviewItemUrkund) listIterator.next();
 
 			// has the item reached its next retry time?
 			if (currentItem.getNextRetryTime() == null) {
@@ -396,6 +413,14 @@ public class UrkundReviewServiceImpl extends BaseReviewServiceImpl {
 				if(STATE_ANALYZED.equals(submissionData.getStatus().get("State"))) {
 					currentItem.setReviewScore((int) Math.round(submissionData.getSignificance()));
 					currentItem.setStatus(ContentReviewItem.SUBMITTED_REPORT_AVAILABLE_CODE);
+					
+					//store reportURL
+					currentItem.setReportUrl((String)submissionData.getReport().get("ReportUrl"));
+					
+					//store OptOutURL
+					Map<String, Object> optOutInfo = (Map)submissionData.getDocument().get("OptOutInfo");
+					currentItem.setOptOutUrl((String)optOutInfo.get("Url"));
+					
 					dao.update(currentItem);
 					success++;
 				} else if(STATE_ACCEPTED.equals(submissionData.getStatus().get("State"))) {

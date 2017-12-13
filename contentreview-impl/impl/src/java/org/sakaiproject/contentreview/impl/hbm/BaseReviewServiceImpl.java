@@ -31,6 +31,7 @@ import org.sakaiproject.contentreview.exception.QueueException;
 import org.sakaiproject.contentreview.exception.ReportException;
 import org.sakaiproject.contentreview.exception.SubmissionException;
 import org.sakaiproject.contentreview.model.ContentReviewItem;
+import org.sakaiproject.contentreview.model.ContentReviewItemUrkund;
 import org.sakaiproject.contentreview.service.ContentReviewService;
 import org.sakaiproject.contentreview.service.ContentReviewSiteAdvisor;
 import org.sakaiproject.genericdao.api.search.Order;
@@ -110,7 +111,7 @@ public abstract class BaseReviewServiceImpl implements ContentReviewService {
 		if (existingItems.size() > 0) {
 			throw new QueueException("Content " + contentId + " is already queued, not re-queued");
 		}
-		ContentReviewItem item = new ContentReviewItem(userId, siteId, taskId, contentId, new Date(),
+		ContentReviewItemUrkund item = new ContentReviewItemUrkund(userId, siteId, taskId, contentId, new Date(),
 			ContentReviewItem.NOT_SUBMITTED_CODE);
 		item.setNextRetryTime(new Date());
 		dao.save(item);
