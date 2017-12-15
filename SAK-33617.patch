@@ -163,7 +163,7 @@ index 2814003ce1..05116b26cb 100644
  											$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))
  										#end
 +
-+										#if (!$submission.getReviewReport().equals("Error") &&
++										#if (!$reviewResult.getReviewReport().equals("Error") &&
 +											$reviewResult.contentReviewItem.optOutUrl)
 +												(<a href="$!reviewResult.contentReviewItem.optOutUrl" target="_blank">$tlang.getString("review.report.urkund.optoutlink")</a>)
 +										#end
@@ -178,7 +178,7 @@ index b9d8b3f5dc..bc6315be8a 100644
  										#else
  											$validator.escapeHtml($props.getPropertyFormatted($props.NamePropDisplayName))
  										#end
-+										#if (!$submission.getReviewReport().equals("Error") &&
++										#if (!$reviewResult.getReviewReport().equals("Error") &&
 +											$reviewResult.contentReviewItem.optOutUrl)
 +												(<a href="$!reviewResult.contentReviewItem.optOutUrl" target="_blank">$tlang.getString("review.report.urkund.optoutlink")</a>)
 +										#end
