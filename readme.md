@@ -37,6 +37,12 @@ This project contains the Urkund implementation for ContentReview
   - urkund.acceptable.file.types=ACCEPTABLE_FILE_TYPES
   - urkund.networkTimeout=180000
 
+## IMPORTANT : DB Migration
+If you have items created before this commit bc8e982 (15/12/2017), you need to run this script in your DB :
+```sql
+INSERT INTO contentreview_item_urkund (id) (SELECT id FROM contentreview_item ci WHERE NOT EXISTS (SELECT * FROM contentreview_item_urkund ciu WHERE ci.id = ciu.id));
+```
+
 ## Quartz Jobs
 
 - Process Content Review Queue : Process the content-review queue, uploads documents to Urkund and analyze them.
